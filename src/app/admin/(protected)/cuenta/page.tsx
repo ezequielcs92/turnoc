@@ -1,0 +1,2 @@
+import { requireAdmin } from "@/lib/admin";
+export default async function AdminAccountPage() { const { user, profile } = await requireAdmin(); return <><header className="admin-page-heading"><span className="eyebrow">Usuario administrador</span><h1>{profile.display_name}</h1><p>Rol: {profile.role} · cuenta activa</p></header><dl className="fact-list"><div className="fact-row"><dt>ID Auth</dt><dd><code>{user.id}</code></dd></div><div className="fact-row"><dt>Email</dt><dd>{user.email ?? "No disponible"}</dd></div></dl></>; }

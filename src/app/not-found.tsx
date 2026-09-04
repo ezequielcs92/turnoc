@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound() { return <main id="contenido" className="admin-login"><section className="admin-login-card"><span className="eyebrow">404</span><h1 className="display section-title">Esta pista no existe.</h1><p className="lede">El contenido pudo haberse archivado o todavía no fue publicado.</p><Link className="button button-primary" href="/">Volver al inicio</Link></section></main>; }

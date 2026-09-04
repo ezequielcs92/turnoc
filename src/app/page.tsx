@@ -1,69 +1,16 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ContentCard } from "@/components/content-card";
+import { SourceBanner } from "@/components/source-banner";
+import { formatDateTime, postKindLabels, projectStateLabels } from "@/lib/format";
+import { getPublicSnapshot } from "@/lib/supabase/data";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+export default async function HomePage() {
+  const snapshot = await getPublicSnapshot();
+  const feature = snapshot.features.find((item) => item.slot === "hero") ?? snapshot.features[0];
+  const hero = feature ?? { eyebrow: "Compañía Turnoc", title: "Cuerpos en riesgo. Historias en movimiento.", summary: "Archivo, escena y comunidad en un mismo espacio.", href: "/proyectos" };
+  return <main id="contenido" className="site-main"><SourceBanner source={snapshot.source} /><section className="hero"><div className="hero-orbit" aria-hidden="true" /><div className="site-shell hero-grid"><div className="hero-copy" data-reveal><span className="eyebrow">{hero.eyebrow}</span><h1 className="display hero-title">{hero.title}</h1></div><div className="hero-aside" data-reveal><div className="hero-index" aria-hidden="true">01</div><p className="lede">{hero.summary}</p><div className="button-row"><Link className="button button-primary" href={hero.href}>Entrar en escena</Link><Link className="button button-quiet" href="/contacto">Contratar</Link></div></div></div></section><div className="ticker" aria-hidden="true"><div className="ticker-track"><span>Obras · Artistas · Archivo · Comunidad · Agenda ·</span><span>Obras · Artistas · Archivo · Comunidad · Agenda ·</span></div></div>
+    <section className="section section-dark"><div className="site-shell"><div className="section-heading" data-reveal><div><span className="eyebrow">Obras</span><h2 className="display section-title">Ahora y siempre.</h2></div><p className="lede">Los proyectos viven en presente, futuro y archivo; cada ficha reúne escena, equipo, memoria y contratación.</p></div><div className="card-grid">{snapshot.projects.length ? snapshot.projects.slice(0, 3).map((project, index) => <ContentCard key={project.id} index={index} eyebrow={projectStateLabels[project.state]} title={project.title} copy={project.excerpt} href={`/proyectos/${project.slug}`} />) : <div className="empty-state">La programación publicada aparecerá acá.</div>}</div></div></section>
+    <section className="section section-paper"><div className="site-shell split"><div data-reveal><span className="eyebrow" style={{ color: "var(--coral)" }}>Próximamente</span><h2 className="display section-title">Encontrarnos en tiempo real.</h2><p className="lede">Funciones, talleres, festivales y conversaciones, sin obligar a nadie a crear una cuenta.</p><Link className="button button-coral" href="/agenda">Ver agenda completa</Link></div><div className="timeline">{snapshot.events.length ? snapshot.events.slice(0, 4).map((event) => <Link className="timeline-item" href="/agenda" key={event.id}><span className="timeline-year">{formatDateTime(event.starts_at)}</span><span><strong>{event.title}</strong><br />{event.venue} · {event.city}</span></Link>) : <div className="empty-state">No hay fechas publicadas todavía.</div>}</div></div></section>
+    <section className="section section-dark"><div className="site-shell"><div className="section-heading" data-reveal><div><span className="eyebrow">Actualidad</span><h2 className="display section-title">Lo que pasa detrás.</h2></div><Link className="button button-quiet" href="/actualidad">Abrir el archivo</Link></div><div className="card-grid">{snapshot.posts.length ? snapshot.posts.slice(0, 3).map((post, index) => <ContentCard key={post.id} index={index} eyebrow={postKindLabels[post.kind]} title={post.title} copy={post.excerpt} href={`/actualidad/${post.slug}`} tags={post.tags} />) : <div className="empty-state">Las publicaciones editadas aparecerán acá.</div>}</div></div></section>
+    <section className="section section-paper"><div className="site-shell split"><div><span className="eyebrow" style={{ color: "var(--coral)" }}>Comunidad de lectura</span><h2 className="display section-title">Curar también es hacer cultura.</h2></div><div className="prose"><p>Agenda seleccionada, convocatorias y recursos para leer el circo más allá de una función.</p><p>Las propuestas ingresan a una bandeja moderada. Nada se publica automáticamente.</p><Link className="button button-coral" href="/comunidad">Sumar una propuesta</Link></div></div></section></main>;
 }

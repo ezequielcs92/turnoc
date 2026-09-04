@@ -1,0 +1,12 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { SourceBanner } from "@/components/source-banner";
+import { formatDate, postKindLabels } from "@/lib/format";
+import { getPostBySlug, getPublicSnapshot } from "@/lib/supabase/data";
+import { absoluteUrl, jsonLd } from "@/lib/seo";
+
+type Props = { params: Promise<{ slug: string }> };
+export async function generateMetadata({ params }: Props): Promise<Metadata> { const { slug } = await params; const post = await getPostBySlug(slug); if (!post) return { title: "Publicación no encontrada" }; return { title: post.seo_title ?? post.title, description: post.seo_description ?? post.excerpt, alternates: { canonical: `/actualidad/${post.slug}` }, openGraph: { title: post.seo_title ?? post.title, description: post.seo_description ?? post.excerpt, url: `/actualidad/${post.slug}`, type: "article", publishedTime: post.publish_at ?? undefined } }; }
+
+export default async function PostDetailPage({ params }: Props) { const { slug } = await params; const [post, snapshot] = await Promise.all([getPostBySlug(slug), getPublicSnapshot()]); if (!post) notFound(); const schema = { "@context": "https://schema.org", "@type": "Article", headline: post.title, description: post.excerpt, datePublished: post.publish_at, dateModified: post.updated_at, mainEntityOfPage: absoluteUrl(`/actualidad/${post.slug}`), publisher: { "@type": "Organization", name: "Compañía Turnoc" } }; return <main id="contenido"><SourceBanner source={snapshot.source} /><article><header className="detail-hero"><div className="site-shell"><span className="eyebrow">{postKindLabels[post.kind]}</span><h1 className="display page-title">{post.title}</h1><div className="detail-kicker">{post.publish_at ? <span className="pill">{formatDate(post.publish_at)}</span> : null}{post.tags.map((tag) => <span className="pill" key={tag}>{tag}</span>)}</div><p className="lede">{post.excerpt}</p></div></header><div className="site-shell detail-body split"><div><span className="eyebrow">Archivo editorial</span></div><div className="prose"><p>{post.body || "El contenido completo todavía no fue cargado."}</p>{post.cta_url && post.cta_label ? <Link className="button button-primary" href={post.cta_url}>{post.cta_label}</Link> : null}</div></div></article><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schema) }} /></main>; }

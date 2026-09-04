@@ -1,0 +1,4 @@
+import { ImageResponse } from "next/og";
+import { getArtistBySlug } from "@/lib/supabase/data";
+export const alt = "Artista de Compañía Turnoc"; export const size = { width: 1200, height: 630 }; export const contentType = "image/png";
+export default async function Image({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const artist = await getArtistBySlug(slug); return new ImageResponse(<div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, background: "#120f10", color: "#f4efdf" }}><div style={{ color: "#d9ff43", fontSize: 28 }}>COMPAÑÍA TURNOC · ARTISTA</div><div style={{ fontFamily: "serif", fontSize: 92, lineHeight: .95 }}>{artist?.stage_name ?? artist?.name ?? "Artista"}</div><div style={{ fontSize: 24 }}>{artist?.disciplines.join(" · ")}</div></div>, size); }

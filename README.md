@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Compañía Turnoc — base web integral
 
-## Getting Started
+Primera base funcional para el archivo cultural, la vidriera profesional y la comunidad de lectura de Compañía Turnoc. Está construida con Next.js App Router, TypeScript, Supabase y Tailwind CSS.
 
-First, run the development server:
+## Qué incluye
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Sitio público sin login: inicio, compañía, proyectos, artistas, agenda, actualidad, universo del circo, comunidad y contacto.
+- Landings dinámicas y relaciones entre artistas, proyectos, eventos, publicaciones y medios.
+- Panel privado owner-only con dashboard, gestión de las cuatro entidades centrales, archivado recuperable, vista previa, agenda, biblioteca de medios y bandeja de formularios.
+- Flujo editorial `draft -> preview -> published/scheduled`, con publicación programada resuelta por RLS y revalidación pública cada 60 segundos.
+- RLS tabla por tabla, columnas públicas mínimas, buckets de medios protegidos y función `private.is_admin()` con `search_path` fijado. Un archivo publicable sólo se puede leer cuando su metadato está publicado.
+- Metadata dinámica, Open Graph por entidad, `sitemap.xml`, `robots.txt` y datos estructurados.
+- Contenido demo explícito cuando no hay variables públicas de Supabase; el seed local no se envía al remoto.
+
+La identidad actual es deliberadamente provisional. Los tokens visuales viven al inicio de `src/app/globals.css`; logo, tipografías, colores y fotografías deben reemplazarse por material aprobado.
+
+## Entorno local
+
+Requiere Node.js 20.9+ y npm. Docker Desktop sólo es necesario para levantar Supabase localmente.
+
+1. Instalá dependencias con `npm install`.
+2. Copiá `.env.example` a `.env.local`.
+3. Completá únicamente `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` desde la configuración API del proyecto.
+4. Ejecutá `npm run dev`.
+
+No uses ni expongas la service-role key en el navegador. Este proyecto no la necesita.
+
+Si las variables no están configuradas, el sitio público usa contenido ficticio claramente marcado y el panel explica qué falta. Si el remoto está configurado pero vacío, muestra estados vacíos reales.
+
+## Migraciones y tipos
+
+El remoto enlazado recibió las migraciones iniciales luego de un `db push --dry-run`. Para próximos cambios:
+
+```powershell
+npx supabase db push --linked --dry-run --skip-vault
+npx supabase db push --linked --skip-vault
+npx supabase gen types --linked --schema public | Out-File -LiteralPath '.\src\types\database.types.ts' -Encoding utf8
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+No uses `supabase db reset --linked`: destruye el esquema remoto.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Para validar todo localmente con Docker Desktop iniciado:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npx supabase start --exclude imgproxy,logflare,vector,supavisor
+npx supabase db reset --local
+npx supabase test db
+```
 
-## Learn More
+## Asociar el primer administrador
 
-To learn more about Next.js, take a look at the following resources:
+No se crea ningún usuario ni credencial ficticia. El procedimiento requiere una cuenta Auth real creada por la persona responsable:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Crear/invitar el usuario desde Supabase Auth usando su email real.
+2. Copiar su UUID desde el panel de Auth.
+3. En el SQL Editor del mismo proyecto, ejecutar este SQL reemplazando ambos marcadores:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```sql
+insert into public.app_users (user_id, display_name, role, active)
+values ('<UUID_REAL_DE_AUTH>', '<NOMBRE_VISIBLE_APROBADO>', 'admin', true)
+on conflict (user_id) do update
+set display_name = excluded.display_name,
+    role = 'admin',
+    active = true;
+```
 
-## Deploy on Vercel
+La tabla no permite autoasignación pública. La autorización se comprueba nuevamente dentro de cada Server Action; el proxy sólo realiza la redirección temprana de sesión.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Las altas públicas están desactivadas en la configuración de Auth. El proyecto exige contraseñas de al menos 12 caracteres con mayúsculas, minúsculas y números; el dominio definitivo todavía debe reemplazar las URLs locales permitidas.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Validación
+
+```powershell
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+git diff --check
+```
+
+Los tests SQL están en `supabase/tests/database/rls.test.sql` y requieren el stack local.
+
+## Etapas futuras (no ejecutadas)
+
+- GitHub: confirmar propietario, nombre y visibilidad; recién entonces crear el remoto y hacer push.
+- Vercel: importar el repositorio, cargar las tres variables públicas y verificar que el deployment quede `READY`.
+- Supabase Auth: configurar URL del sitio y redirect URLs del dominio definitivo.
+- Contenido: cargar identidad, fotografías, historia, manifiesto, dossier, contactos y datos reales aprobados.

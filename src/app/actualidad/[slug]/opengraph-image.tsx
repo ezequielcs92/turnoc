@@ -1,0 +1,4 @@
+import { ImageResponse } from "next/og";
+import { getPostBySlug } from "@/lib/supabase/data";
+export const alt = "Publicación de Compañía Turnoc"; export const size = { width: 1200, height: 630 }; export const contentType = "image/png";
+export default async function Image({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const post = await getPostBySlug(slug); return new ImageResponse(<div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, background: "#f4efdf", color: "#120f10" }}><div style={{ color: "#c53a2b", fontSize: 28 }}>COMPAÑÍA TURNOC · ACTUALIDAD</div><div style={{ fontFamily: "serif", fontSize: 88, lineHeight: .95 }}>{post?.title ?? "Actualidad"}</div><div style={{ fontSize: 24 }}>turnoc · archivo vivo</div></div>, size); }
