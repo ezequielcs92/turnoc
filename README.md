@@ -80,9 +80,12 @@ git diff --check
 
 Los tests SQL están en `supabase/tests/database/rls.test.sql` y requieren el stack local.
 
+## Repositorio
+
+El código está versionado en [ezequielcs92/turnoc](https://github.com/ezequielcs92/turnoc), con `main` como rama principal. El repositorio no contiene variables locales, credenciales ni estado temporal de Supabase.
+
 ## Etapas futuras (no ejecutadas)
 
-- GitHub: confirmar propietario, nombre y visibilidad; recién entonces crear el remoto y hacer push.
 - Vercel: importar el repositorio, cargar las tres variables públicas y verificar que el deployment quede `READY`.
 - Supabase Auth: configurar URL del sitio y redirect URLs del dominio definitivo.
 - Contenido: cargar identidad, fotografías, historia, manifiesto, dossier, contactos y datos reales aprobados.
