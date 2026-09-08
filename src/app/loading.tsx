@@ -1,1 +1,1 @@
-export default function Loading() { return <main id="contenido" className="admin-login" aria-live="polite"><p className="eyebrow">Preparando la escena…</p></main>; }
+export default function Loading() { return <main id="contenido" className="route-loading" aria-live="polite" aria-busy="true"><div className="site-shell"><span className="eyebrow">Preparando la escena…</span><div className="loading-title" /><div className="loading-grid"><span /><span /><span /></div></div></main>; }

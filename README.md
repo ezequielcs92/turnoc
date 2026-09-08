@@ -8,11 +8,11 @@ Primera base funcional para el archivo cultural, la vidriera profesional y la co
 - Landings dinámicas y relaciones entre artistas, proyectos, eventos, publicaciones y medios.
 - Panel privado owner-only con dashboard, gestión de las cuatro entidades centrales, archivado recuperable, vista previa, agenda, biblioteca de medios y bandeja de formularios.
 - Flujo editorial `draft -> preview -> published/scheduled`, con publicación programada resuelta por RLS y revalidación pública cada 60 segundos.
-- RLS tabla por tabla, columnas públicas mínimas, buckets de medios protegidos y función `private.is_admin()` con `search_path` fijado. Un archivo publicable sólo se puede leer cuando su metadato está publicado.
+- RLS tabla por tabla, columnas públicas mínimas, fuentes de medios privadas y función `private.is_admin()` con `search_path` fijado. Una publicación explícita crea una copia pública separada en Cloudflare R2.
 - Metadata dinámica, Open Graph por entidad, `sitemap.xml`, `robots.txt` y datos estructurados.
 - Contenido demo explícito cuando no hay variables públicas de Supabase; el seed local no se envía al remoto.
 
-La identidad actual es deliberadamente provisional. Los tokens visuales viven al inicio de `src/app/globals.css`; logo, tipografías, colores y fotografías deben reemplazarse por material aprobado.
+La identidad actual usa Poppins y un sistema visual cinético. Los tokens viven al inicio de `src/app/globals.css`; logo, colores y fotografías definitivas todavía deben reemplazarse por material aprobado.
 
 ## Entorno local
 
@@ -20,12 +20,28 @@ Requiere Node.js 20.9+ y npm. Docker Desktop sólo es necesario para levantar Su
 
 1. Instalá dependencias con `npm install`.
 2. Copiá `.env.example` a `.env.local`.
-3. Completá únicamente `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` desde la configuración API del proyecto.
+3. Completá `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` desde la configuración API del proyecto.
 4. Ejecutá `npm run dev`.
 
 No uses ni expongas la service-role key en el navegador. Este proyecto no la necesita.
 
 Si las variables no están configuradas, el sitio público usa contenido ficticio claramente marcado y el panel explica qué falta. Si el remoto está configurado pero vacío, muestra estados vacíos reales.
+
+## Publicación de medios con R2
+
+La carga editorial siempre guarda la fuente en el bucket privado de Supabase. La acción administrativa **Publicar en R2** descarga esa fuente desde el servidor, valida MIME, tipo, tamaño y clave, sube una copia a R2 y recién entonces marca el metadato como publicado. Si la subida falla, el registro permanece sin publicar. Archivar elimina la copia pública pero conserva la fuente privada.
+
+Configurá estas variables fuera del repositorio, sin compartir sus valores por chat ni exponer credenciales al navegador:
+
+```text
+R2_ACCOUNT_ID
+R2_BUCKET_NAME
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+NEXT_PUBLIC_R2_PUBLIC_URL
+```
+
+`NEXT_PUBLIC_R2_PUBLIC_URL` no contiene un secreto: es la base desde la que se sirven los objetos publicados. Una URL administrada `r2.dev` sirve para desarrollo o preview y tiene límites variables; para producción conectá un dominio propio al bucket y usalo como URL pública. No se crea ni se presupone ningún bucket desde este código.
 
 ## Migraciones y tipos
 
@@ -86,6 +102,6 @@ El código está versionado en [ezequielcs92/turnoc](https://github.com/ezequiel
 
 ## Etapas futuras (no ejecutadas)
 
-- Vercel: importar el repositorio, cargar las tres variables públicas y verificar que el deployment quede `READY`.
+- Vercel: completar las variables públicas de Supabase y las variables R2 en el entorno correspondiente antes de habilitar publicación real de medios.
 - Supabase Auth: configurar URL del sitio y redirect URLs del dominio definitivo.
 - Contenido: cargar identidad, fotografías, historia, manifiesto, dossier, contactos y datos reales aprobados.

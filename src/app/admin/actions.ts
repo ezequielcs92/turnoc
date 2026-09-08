@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
+import { buildR2ObjectKey, validateMediaSource, type MediaKind } from "@/lib/r2/object";
+import { deletePublicObject, putPublicObject } from "@/lib/r2/storage";
+import { archiveMediaWorkflow, publishMediaWorkflow } from "@/lib/r2/workflow";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { slugSchema, splitList } from "@/lib/validation";
 import type { AdminEntityKind } from "@/types/content";
@@ -87,10 +90,10 @@ export async function archiveAdminEntity(kind: AdminEntityKind, id: string) {
 }
 
 export async function registerMediaAction(_state: AdminActionState, formData: FormData): Promise<AdminActionState> {
-  const parsed = z.object({ title: z.string().trim().min(2).max(180), bucket: z.enum(["turnoc-public", "turnoc-private"]), path: z.string().trim().min(1).max(600), alt: z.string().trim().max(240), kind: z.enum(["image", "video", "audio", "document"]) }).safeParse({ title: formData.get("title"), bucket: formData.get("bucket"), path: formData.get("path"), alt: formData.get("alt"), kind: formData.get("kind") });
+  const parsed = z.object({ title: z.string().trim().min(2).max(180), path: z.string().trim().regex(/^[0-9a-f-]{36}\/[a-z0-9][a-z0-9._-]{0,199}$/i).refine((path) => !path.includes("..")), alt: z.string().trim().max(240), kind: z.enum(["image", "video", "audio", "document"]) }).safeParse({ title: formData.get("title"), path: formData.get("path"), alt: formData.get("alt"), kind: formData.get("kind") });
   if (!parsed.success) return { status: "error", message: "No se pudo registrar el archivo.", fieldErrors: parsed.error.flatten().fieldErrors };
   const { supabase, user } = await requireAdmin();
-  const { error } = await supabase.from("media_assets").insert({ title: parsed.data.title, bucket_id: parsed.data.bucket, object_path: parsed.data.path, alt_text: parsed.data.alt, kind: parsed.data.kind, created_by: user.id, status: "draft" });
+  const { error } = await supabase.from("media_assets").insert({ title: parsed.data.title, bucket_id: "turnoc-private", object_path: parsed.data.path, alt_text: parsed.data.alt, kind: parsed.data.kind, created_by: user.id, status: "draft" });
   if (error) return { status: "error", message: `El archivo se subió, pero falló el registro: ${error.message}` };
   revalidatePath("/admin/medios"); return { status: "success", message: "Archivo cargado como borrador." };
 }
@@ -99,12 +102,37 @@ export async function setMediaStatusAction(id: string, status: "draft" | "publis
   const parsed = z.object({ id: z.string().uuid(), status: z.enum(["draft", "published", "archived"]) }).safeParse({ id, status });
   if (!parsed.success) throw new Error("Estado de medio inválido.");
   const { supabase, user } = await requireAdmin();
-  const { data: asset, error: readError } = await supabase.from("media_assets").select("bucket_id,publish_at").eq("id", parsed.data.id).single();
+  const { data: asset, error: readError } = await supabase.from("media_assets").select("id,kind,bucket_id,object_path,publish_at,public_object_key").eq("id", parsed.data.id).single();
   if (readError) throw new Error(readError.message);
-  if (parsed.data.status === "published" && asset.bucket_id !== "turnoc-public") throw new Error("Mové el archivo al destino publicable antes de publicarlo.");
-  const publishAt = parsed.data.status === "published" ? (asset.publish_at ?? new Date().toISOString()) : asset.publish_at;
-  const { error } = await supabase.from("media_assets").update({ status: parsed.data.status, publish_at: publishAt, updated_by: user.id }).eq("id", parsed.data.id);
-  if (error) throw new Error(error.message);
+
+  if (parsed.data.status === "published") {
+    await publishMediaWorkflow({
+      loadSource: async () => {
+        const { data, error } = await supabase.storage.from(asset.bucket_id).download(asset.object_path);
+        if (error || !data) throw new Error("No se pudo leer la fuente privada de Supabase.");
+        return data;
+      },
+      uploadPublic: async (source) => {
+        const { contentType, extension } = validateMediaSource(source, asset.kind as MediaKind);
+        return putPublicObject(buildR2ObjectKey(asset.id, extension), new Uint8Array(await source.arrayBuffer()), contentType);
+      },
+      persistPublished: async ({ key, url }) => {
+        const { error } = await supabase.from("media_assets").update({ status: "published", publish_at: asset.publish_at ?? new Date().toISOString(), public_provider: "r2", public_object_key: key, public_url: url, updated_by: user.id }).eq("id", asset.id);
+        if (error) throw new Error(error.message);
+      },
+      rollbackPublic: deletePublicObject,
+    });
+  } else if (parsed.data.status === "archived") {
+    const persistArchived = async () => {
+      const { error } = await supabase.from("media_assets").update({ status: "archived", public_provider: null, public_object_key: null, public_url: null, updated_by: user.id }).eq("id", asset.id);
+      if (error) throw new Error(error.message);
+    };
+    if (asset.public_object_key) await archiveMediaWorkflow({ key: asset.public_object_key, deletePublic: deletePublicObject, persistArchived });
+    else await persistArchived();
+  } else {
+    const { error } = await supabase.from("media_assets").update({ status: "draft", updated_by: user.id }).eq("id", asset.id);
+    if (error) throw new Error(error.message);
+  }
   revalidatePath("/", "layout");
   revalidatePath("/admin/medios");
 }

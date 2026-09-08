@@ -359,6 +359,9 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["media_kind"]
           object_path: string
+          public_object_key: string | null
+          public_provider: string | null
+          public_url: string | null
           publish_at: string | null
           status: Database["public"]["Enums"]["content_status"]
           title: string
@@ -378,6 +381,9 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["media_kind"]
           object_path: string
+          public_object_key?: string | null
+          public_provider?: string | null
+          public_url?: string | null
           publish_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           title: string
@@ -397,6 +403,9 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["media_kind"]
           object_path?: string
+          public_object_key?: string | null
+          public_provider?: string | null
+          public_url?: string | null
           publish_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           title?: string
